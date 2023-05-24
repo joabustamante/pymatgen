@@ -322,7 +322,14 @@ class PhononBSPlotter:
             "lattice": self._bs.lattice_rec.as_dict(),
         }
 
-    def get_plot(self, ylim=None, units="thz"):
+    def get_plot(
+        self,
+        ylim=None,
+        units="thz",
+        add_gruneisen_as_weights: bool = False,
+        number_of_bands: int | None = None,
+        gruneisen_scale_factor: int = 1,
+    ):
         """
         Get a matplotlib object for the bandstructure plot.
 
@@ -330,6 +337,9 @@ class PhononBSPlotter:
             ylim: Specify the y-axis (frequency) limits; by default None let
                 the code choose.
             units: units for the frequencies. Accepted values thz, ev, mev, ha, cm-1, cm^-1.
+            add_gruneisen_as_weights: will add gruneisen values as weights
+            number_of_bands: number of bands to be plotted
+            gruneisen_scale_factor: factor to scale gruneisen parameter values
         """
         u = freq_units(units)
 
@@ -339,13 +349,28 @@ class PhononBSPlotter:
 
         data = self.bs_plot_data()
         for d in range(len(data["distances"])):
-            for i in range(self._nb_bands):
+            if number_of_bands is not None:
+                nb = number_of_bands
+            else:
+                nb = self._nb_bands
+            for i in range(nb):
                 plt.plot(
                     data["distances"][d],
                     [data["frequency"][d][i][j] * u.factor for j in range(len(data["distances"][d]))],
                     "b-",
                     linewidth=band_linewidth,
                 )
+                if add_gruneisen_as_weights and "gruneisen" in self.bs_plot_data():
+                    plt.scatter(
+                        data["distances"][d],
+                        [data["frequency"][d][i][j] * u.factor for j in range(len(data["distances"][d]))],
+                        # "b-",
+                        s=[
+                            gruneisen_scale_factor * data["gruneisen"][d][i][j]
+                            for j in range(len(data["distances"][d]))
+                        ],
+                        c="palevioletred",
+                    )
 
         self._maketicks(plt)
 
